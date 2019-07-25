@@ -159,16 +159,6 @@ describe('Bookmarks Endpoints', () => {
   });
 
   describe('DELETE /api/bookmarks/:id', () => {
-    describe.only('PATCH /api/bookmarks/: bookmark_id', () => {
-      context('Given no bookmarks', () => {
-        it('responds with 404', () => {
-          const  bookmarkId = 123456;
-          return supertest(app)
-            .patch(`/api/bookmarks/${ bookmarkId}`)
-            .expect(404, { error: { message: ' Bookmark doesn\'t exist' } });
-        });
-      });
-    });
     context('Given no bookmarks', () => {
       it('responds 404 whe bookmark doesn\'t exist', () => {
         return supertest(app)
@@ -205,7 +195,59 @@ describe('Bookmarks Endpoints', () => {
       });
     });
   });
-
+  describe.only('PATCH /api/bookmarks/:id', () => {
+    context('Given no bookmarks', () => {
+      it('responds with 404', () => {
+        const  bookmarkId = 123456;
+        return supertest(app)
+          .patch(`/api/bookmarks/${ bookmarkId}`)
+          .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
+          .expect(404, { error: { message: 'Bookmark Not Found' } });
+      });
+    });
+  });
+  context('Given there are bookmarks in the database', () => {
+    const testBookmarks = fixtures.makeBookmarksArray();
+     
+    beforeEach('insert bookmarks', () => {
+      return db
+        .into('bookmarks')
+        .insert(testBookmarks);
+    });
+     
+    it('responds with 204 and updates the Bookmark', () => {
+      const idToUpdate = 2;
+      const updateBookmark = {
+        title: 'updated bookmark title',
+        url: 'Interview',
+        description: 'updated bookmark content',
+      };
+      const expectedBookmark = {
+          ...testBookmarks[idToUpdate - 1],
+          ...updateBookmark
+      };
+      return supertest(app)
+        .patch(`/api/bookmarks/${idToUpdate}`)
+        .send(updateBookmark)
+        .expect(204)
+        .then(res =>
+                 supertest(app)
+                   .get(`/api/bookmarks/${idToUpdate}`)
+                   .expect(expectedBookmark)
+              )
+      });          
+    it(`responds with 400 when no required fields supplied`, () => {
+        const idToUpdate = 2
+        return supertest(app)
+          .patch(`/api/articles/${idToUpdate}`)
+          .send({ irrelevantField: 'foo' })
+          .expect(400, {
+            error: {
+              message: `Request body must contain either 'title', 'url' or 'description'`
+            }
+          })
+      })            
+  });
   describe('POST /api/bookmarks', () => {
     it('responds with 400 missing \'title\' if not supplied', () => {
       const newBookmarkMissingTitle = {

@@ -2,10 +2,10 @@ const express = require('express');
 const { isWebUri } = require('valid-url');
 const xss = require('xss');
 const logger = require('../logger');
-const BookarksService = require('./bookmarks-service');
+const BookmarksService = require('./bookmarks-service');
 
 const bookmarksRouter = express.Router();
-const bodyParser = express.json();
+const jsonParser = express.json();
 
 const serializeBookmark = bookmark => ({
   id: bookmark.id,
@@ -18,13 +18,13 @@ const serializeBookmark = bookmark => ({
 bookmarksRouter
   .route('/')
   .get((req, res, next) => {
-    BookarksService.getAllBookmarks(req.app.get('db'))
+    BookmarksService.getAllBookmarks(req.app.get('db'))
       .then(bookmarks => {
         res.json(bookmarks.map(serializeBookmark));
       })
       .catch(next);
   })
-  .post(bodyParser, (req, res, next) => {
+  .post(jsonParser, (req, res, next) => {
     for (const field of ['title', 'url', 'rating']) {
       if (!req.body[field]) {
         logger.error(`${field} is required`);
@@ -46,7 +46,7 @@ bookmarksRouter
 
     const newBookmark = { title, url, description, rating };
 
-    BookarksService.insertBookmark(
+    BookmarksService.insertBookmark(
       req.app.get('db'),
       newBookmark
     )
@@ -54,7 +54,7 @@ bookmarksRouter
         logger.info(`Card with id ${bookmark.id} created.`);
         res
           .status(201)
-          .location(req.originalUrl + `/${bookmark.id}`)
+          .location(req.originalUrl  `/${bookmark.id}`)
           .json(serializeBookmark(bookmark));
       })
       .catch(next);
@@ -64,7 +64,7 @@ bookmarksRouter
   .route('/:bookmark_id')
   .all((req, res, next) => {
     const { bookmark_id } = req.params;
-    BookarksService.getById(req.app.get('db'), bookmark_id)
+    BookmarksService.getById(req.app.get('db'), bookmark_id)
       .then(bookmark => {
         if (!bookmark) {
           logger.error(`Bookmark with id ${bookmark_id} not found.`);
@@ -84,7 +84,7 @@ bookmarksRouter
   .delete((req, res, next) => {
     // TODO: update to use db
     const { bookmark_id } = req.params;
-    BookarksService.deleteBookmark(
+    BookmarksService.deleteBookmark(
       req.app.get('db'),
       bookmark_id
     )
@@ -93,6 +93,19 @@ bookmarksRouter
         res.status(204).end();
       })
       .catch(next);
+  })
+  .patch(jsonParser, (req, res, next) => {
+    const { title, url, description } = req.body;
+    const bookmarkToUpdate = { title, url, description };
+    BookmarksService.updateBookmark(
+      req.app.get('db'),
+      req.params.bookmark_id,
+      bookmarkToUpdate
+    )
+      .then(numRowsAffected => {
+        res.status(204).end();
+      })
+      .catch(next);
+    res.status(204).end();
   });
-
 module.exports = bookmarksRouter;
