@@ -159,6 +159,16 @@ describe('Bookmarks Endpoints', () => {
   });
 
   describe('DELETE /api/bookmarks/:id', () => {
+    describe.only('PATCH /api/bookmarks/: bookmark_id', () => {
+      context('Given no bookmarks', () => {
+        it('responds with 404', () => {
+          const  bookmarkId = 123456;
+          return supertest(app)
+            .patch(`/api/bookmarks/${ bookmarkId}`)
+            .expect(404, { error: { message: ' Bookmark doesn\'t exist' } });
+        });
+      });
+    });
     context('Given no bookmarks', () => {
       it('responds 404 whe bookmark doesn\'t exist', () => {
         return supertest(app)
